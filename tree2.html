@@ -1,0 +1,62 @@
+/**
+ * 递归分形树动画
+ * 核心特性：正弦函数控制树枝摆动、层级变细、棕→绿渐变、有限递归深度
+ */
+let maxDepth = 10; // 最大递归深度，限制树枝层级
+
+function setup() {
+  createCanvas(800, 600); // 创建画布：宽800px，高600px
+  background(20); // 深色背景，突出树木
+}
+
+function draw() {
+  background(20); // 每帧清空画布，实现动画刷新
+  push(); // 保存当前画布状态（位置、旋转、缩放）
+  translate(width / 2, height); // 移动原点到画布底部中央，树根位置
+  strokeWeight(8); // 初始树干粗细
+  // 调用递归函数，起始长度120，起始深度0
+  drawBranch(120, 0);
+  pop(); // 恢复画布状态
+}
+
+/**
+ * 递归绘制单根树枝
+ * @param {number} len - 当前树枝长度
+ * @param {number} depth - 当前递归层级
+ */
+function drawBranch(len, depth) {
+  // 终止条件：达到最大递归深度，停止递归
+  if (depth > maxDepth) return;
+
+  // 1. 树枝粗细：层级越高越细，线性递减
+  let weight = map(depth, 0, maxDepth, 8, 1);
+  strokeWeight(weight);
+
+  // 2. 颜色渐变：根部棕色(深棕)→末梢绿色，层级控制渐变
+  let brownR = map(depth, 0, maxDepth, 80, 30);
+  let brownG = map(depth, 0, maxDepth, 40, 160);
+  let brownB = map(depth, 0, maxDepth, 20, 80);
+  stroke(brownR, brownG, brownB);
+
+  // 绘制当前树枝：从原点向上画直线
+  line(0, 0, 0, -len);
+
+  // 计算摆动角度：sin(millis())实现正弦周期性摆动，控制左右幅度
+  let swingAngle = sin(millis() / 800) * 25;
+  let angle1 = 20 + swingAngle; // 右分支角度
+  let angle2 = -20 + swingAngle; // 左分支角度
+
+  // 保存当前变换状态
+  push();
+  translate(0, -len); // 移动到当前树枝顶端，作为子树枝起点
+
+  // 绘制右侧子树枝：旋转+递归，长度缩短0.7倍，深度+1
+  rotate(radians(angle1));
+  drawBranch(len * 0.7, depth + 1);
+
+  // 绘制左侧子树枝：旋转+递归，长度缩短0.7倍，深度+1
+  rotate(radians(angle2 - angle1)); // 相对旋转，避免角度叠加混乱
+  drawBranch(len * 0.7, depth + 1);
+
+  pop(); // 释放变换状态
+}
