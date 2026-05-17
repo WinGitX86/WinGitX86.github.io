@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Recursive Fractal Tree | p5.js</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<script>
+// Global parameters
+const MAX_DEPTH = 10;            // Maximum recursion depth (0 is the trunk)
+const TRUNK_LENGTH = 120;       // Initial trunk length in pixels
+const LENGTH_SCALE = 0.7;       // Scaling factor for branch length per level
+const BASE_ANGLE = Math.PI / 6; // Base branching angle (30 degrees)
+
+function setup() {
+  createCanvas(600, 600);
+  angleMode(RADIANS);           // Use radians for angle operations
+}
+
+function draw() {
+  background(235, 245, 235);    // Soft pale-green background
+
+  // ---- Animation core: use sin(millis()) to create a cyclic angle offset ----
+  let angleOffset = sin(millis() * 0.002) * 0.3;
+  let dynamicAngle = BASE_ANGLE + angleOffset;
+
+  // Move origin to bottom center, with Y-axis pointing upward
+  push();
+  translate(width / 2, height);
+
+  // Draw the trunk (recursion starts at depth 0)
+  branch(TRUNK_LENGTH, 0, dynamicAngle);
+
+  pop();
+}
+
+/**
+ * Recursively draw a branch
+ * @param {number} len   - Current branch length
+ * @param {number} depth - Current recursion depth (trunk = 0)
+ * @param {number} angle - Dynamic branching angle for this frame
+ */
+function branch(len, depth, angle) {
+  // 1. Termination condition: stop when max depth is exceeded
+  if (depth > MAX_DEPTH) {
+    return;
+  }
+
+  // 2. Color gradient: from brown (trunk) to green (tips)
+  let t = map(depth, 0, MAX_DEPTH, 0, 1);
+  let brown = color(139, 69, 19);    // saddle brown
+  let green = color(34, 139, 34);    // forest green
+  let branchColor = lerpColor(brown, green, t);
+
+  // 3. Branch thickness decreases with depth
+  let weight = map(depth, 0, MAX_DEPTH, 12, 1);
+  strokeWeight(weight);
+  stroke(branchColor);
+
+  // 4. Draw the current branch segment (upward from the current origin)
+  line(0, 0, 0, -len);
+
+  // 5. Move the origin to the tip of this branch
+  translate(0, -len);
+
+  // 6. If maximum depth is not yet reached, spawn two child branches
+  if (depth < MAX_DEPTH) {
+    let newLen = len * LENGTH_SCALE;   // Length of child branches
+
+    // Right child (rotated clockwise by dynamic angle)
+    push();
+    rotate(angle);
+    branch(newLen, depth + 1, angle);
+    pop();
+
+    // Left child (rotated counterclockwise by dynamic angle)
+    push();
+    rotate(-angle);
+    branch(newLen, depth + 1, angle);
+    pop();
+  }
+}
+</script>
+</body>
+</html>
