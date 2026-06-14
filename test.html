@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Keyboard Test OS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* ASCII启动界面 */
+        #boot-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .ascii-art {
+            color: #0f0;
+            font-size: 10px;
+            line-height: 1.2;
+            text-align: center;
+            white-space: pre;
+            margin-bottom: 20px;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        .boot-text {
+            color: #0f0;
+            font-size: 14px;
+            margin: 5px 0;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .boot-line {
+            display: flex;
+            align-items: center;
+            margin: 3px 0;
+        }
+        
+        .boot-prompt {
+            color: #0f0;
+            margin-right: 8px;
+        }
+        
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #0f0;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            max-width: 300px;
+            height: 20px;
+            border: 2px solid #0f0;
+            margin: 20px auto;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #0f0;
+            width: 0%;
+            transition: width 0.1s;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        /* 主系统界面 */
+        #main-system {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            padding: 10px;
+            background: #000;
+        }
+        
+        .header {
+            border-bottom: 2px solid #0f0;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        .subtitle {
+            font-size: 12px;
+            color: #0a0;
+            margin-top: 5px;
+        }
+        
+        /* 输入区域 */
+        .input-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #0f0;
+            margin: 10px 0;
+            padding: 15px;
+            background: #001100;
+        }
+        
+        .zone-label {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #0f0;
+        }
+        
+        #input-display {
+            flex: 1;
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 10px;
+            font-size: 16px;
+            color: #0f0;
+            overflow-y: auto;
+            word-break: break-all;
+            min-height: 100px;
+        }
+        
+        .input-line {
+            margin: 2px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .input-prefix {
+            color: #0a0;
+            margin-right: 5px;
+        }
+        
+        /* 按键显示区域 */
+        .key-monitor {
+            border: 2px solid #0f0;
+            padding: 15px;
+            margin: 10px 0;
+            background: #001100;
+            min-height: 120px;
+        }
+        
+        .monitor-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #0f0;
+            padding-bottom: 5px;
+        }
+        
+        .key-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 5px;
+        }
+        
+        .key-cell {
+            border: 1px solid #0f0;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            background: #000;
+            transition: all 0.1s;
+        }
+        
+        .key-cell.active {
+            background: #0f0;
+            color: #000;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #0f0;
+        }
+        
+        .key-cell .key-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .key-cell .key-code {
+            font-size: 10px;
+            color: #0a0;
+            margin-top: 2px;
+        }
+        
+        .key-cell.active .key-code {
+            color: #000;
+        }
+        
+        /* 确认区域 */
+        .confirm-zone {
+            border: 2px solid #ff0;
+            padding: 15px;
+            margin: 10px 0;
+            background: #111100;
+            display: none;
+        }
+        
+        .confirm-zone.show {
+            display: block;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .confirm-title {
+            color: #ff0;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .confirm-text {
+            color: #ff0;
+            font-size: 14px;
+            margin: 5px 0;
+            word-break: break-all;
+        }
+        
+        .confirm-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid;
+            background: #000;
+            color: inherit;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: center;
+            user-select: none;
+        }
+        
+        .btn-confirm {
+            border-color: #0f0;
+            color: #0f0;
+        }
+        
+        .btn-confirm:active {
+            background: #0f0;
+            color: #000;
+        }
+        
+        .btn-retry {
+            border-color: #f00;
+            color: #f00;
+        }
+        
+        .btn-retry:active {
+            background: #f00;
+            color: #000;
+        }
+        
+        /* 状态栏 */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            border-top: 2px solid #0f0;
+            padding-top: 10px;
+            font-size: 12px;
+            color: #0a0;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #0f0;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* 日志区域 */
+        .log-zone {
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+            background: #000;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            color: #0a0;
+        }
+        
+        .log-entry.error {
+            color: #f00;
+        }
+        
+        .log-entry.success {
+            color: #0f0;
+        }
+        
+        /* 软盘动画 */
+        .floppy-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+            animation: floppySpin 3s infinite;
+        }
+        
+        @keyframes floppySpin {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        /* 提示框 */
+        .hint-box {
+            border: 1px dashed #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #0a0;
+            text-align: center;
+        }
+        
+        /* 隐藏输入框用于捕获 */
+        #hidden-input {
+            position: absolute;
+            opacity: 0;
+            top: -1000px;
+            left: -1000px;
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #0f0;
+            border-radius: 4px;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 480px) {
+            .ascii-art {
+                font-size: 8px;
+            }
+            .key-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 启动画面 -->
+    <div id="boot-screen">
+        <div class="floppy-icon">💾</div>
+        <div class="ascii-art" id="ascii-logo">
+ ███╗   ███╗ ██████╗ ██████╗ ██╗     ███████╗
+ ████╗ ████║██╔═══██╗██╔══██╗██║     ██╔════╝
+ ██╔████╔██║██║   ██║██████╔╝██║     █████╗  
+ ██║╚██╔╝██║██║   ██║██╔══██╗██║     ██╔══╝  
+ ██║ ╚═╝ ██║╚██████╔╝██████╔╝███████╗███████╗
+ ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝
+  ██████╗ ███████╗    ████████╗███████╗███████╗████████╗
+ ██╔═══██╗██╔════╝    ╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝
+ ██║   ██║█████╗         ██║   █████╗  ███████╗   ██║   
+ ██║   ██║██╔══╝         ██║   ██╔══╝  ╚════██║   ██║   
+ ╚██████╔╝██║            ██║   ███████╗███████║   ██║   
+  ╚═════╝ ╚═╝            ╚═╝   ╚══════╝╚══════╝   ╚═╝   
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="boot-text" id="boot-text"></div>
+    </div>
+
+    <!-- 主系统 -->
+    <div id="main-system">
+        <div class="header">
+            <div class="title">[ Mobile KB Test OS v1.0 ]</div>
+            <div class="subtitle">Build 2026.06.14 | Floppy Disk Edition</div>
+        </div>
+
+        <div class="hint-box">
+            💡 点击任意位置激活键盘，输入任意按键进行测试
+        </div>
+
+        <div class="input-zone" id="input-zone">
+            <div class="zone-label">>> 输入缓冲区 [INPUT BUFFER]</div>
+            <div id="input-display">
+                <div class="input-line">
+                    <span class="input-prefix">$</span>
+                    <span id="current-input"></span><span class="cursor" id="main-cursor"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="key-monitor">
+            <div class="monitor-title">>> 实时按键监控 [KEY MONITOR]</div>
+            <div class="key-grid" id="key-grid">
+                <div class="key-cell" id="key-last">
+                    <div class="key-name">-</div>
+                    <div class="key-code">LAST KEY</div>
+                </div>
+                <div class="key-cell" id="key-code">
+                    <div class="key-name">-</div>
+                    <div class="key-code">KEYCODE</div>
+                </div>
+                <div class="key-cell" id="key-which">
+                    <div class="key-name">-</div>
+                    <div class="key-code">WHICH</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirm-zone" id="confirm-zone">
+            <div class="confirm-title">⚠ 输入确认 [CONFIRM INPUT]</div>
+            <div class="confirm-text">检测到输入: <span id="confirm-value"></span></div>
+            <div class="confirm-text">KeyCode: <span id="confirm-code"></span></div>
+            <div class="confirm-buttons">
+                <button class="btn btn-confirm" onclick="confirmInput(true)">✓ 确认无误</button>
+                <button class="btn btn-retry" onclick="confirmInput(false)">✗ 重新输入</button>
+            </div>
+        </div>
+
+        <div class="log-zone" id="log-zone">
+            <div class="log-entry">[SYSTEM] Mobile Keyboard Test System initialized</div>
+            <div class="log-entry">[SYSTEM] Waiting for input...</div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-indicator"></div>
+                <span id="status-text">READY</span>
+            </div>
+            <div class="status-item">
+                <span>KEYS: <span id="key-count">0</span></span>
+            </div>
+            <div class="status-item">
+                <span>MEM: 640K</span>
+            </div>
+        </div>
+    </div>
+
+    <input type="text" id="hidden-input" autocomplete="off">
+
+    <script>
+        // 系统状态
+        const state = {
+            booted: false,
+            inputBuffer: '',
+            keyCount: 0,
+            lastKey: null,
+            pendingConfirm: false,
+            logHistory: []
+        };
+
+        // 启动序列
+        const bootMessages = [
+            "BIOS DATE 06/14/26 14:18:00 VER 1.0",
+            "CPU: Mobile ARM Virtual Processor",
+            "640K RAM SYSTEM... OK",
+            "FLOPPY DISK A: 1.44MB... OK",
+            "LOADING KEYBOARD TEST MODULE...",
+            "MOUNTING VIRTUAL INPUT BUFFER...",
+            "CALIBRATING KEY MATRIX...",
+            "SYSTEM READY."
+        ];
+
+        function bootSequence() {
+            const progress = document.getElementById('progress-fill');
+            const bootText = document.getElementById('boot-text');
+            let step = 0;
+            
+            const interval = setInterval(() => {
+                if (step < bootMessages.length) {
+                    const line = document.createElement('div');
+                    line.className = 'boot-line';
+                    line.innerHTML = `<span class="boot-prompt">></span>${bootMessages[step]}`;
+                    bootText.appendChild(line);
+                    
+                    const pct = ((step + 1) / bootMessages.length) * 100;
+                    progress.style.width = pct + '%';
+                    step++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('boot-screen').style.display = 'none';
+                        document.getElementById('main-system').style.display = 'flex';
+                        state.booted = true;
+                        log('SYSTEM', 'Boot sequence complete. OS loaded from floppy.');
+                        focusInput();
+                    }, 800);
+                }
+            }, 400);
+        }
+
+        // 日志系统
+        function log(type, message) {
+            const logZone = document.getElementById('log-zone');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type === 'ERROR' ? 'error' : type === 'OK' ? 'success' : ''}`;
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            entry.textContent = `[${time}] [${type}] ${message}`;
+            logZone.appendChild(entry);
+            logZone.scrollTop = logZone.scrollHeight;
+            
+            // 限制日志数量
+            while (logZone.children.length > 50) {
+                logZone.removeChild(logZone.firstChild);
+            }
+        }
+
+        // 更新按键显示
+        function updateKeyDisplay(key, code, which, keyCode) {
+            const cells = {
+                'key-last': key || '-',
+                'key-code': code || '-',
+                'key-which': which || '-'
+            };
+
+            Object.entries(cells).forEach(([id, value]) => {
+                const cell = document.getElementById(id);
+                cell.querySelector('.key-name').textContent = value;
+                cell.classList.add('active');
+                setTimeout(() => cell.classList.remove('active'), 200);
+            });
+        }
+
+        // 确认输入
+        function confirmInput(confirmed) {
+            const confirmZone = document.getElementById('confirm-zone');
+            
+            if (confirmed) {
+                log('OK', `Input confirmed: "${state.inputBuffer}" (Code: ${state.lastKey})`);
+                document.getElementById('input-display').innerHTML += 
+                    `<div class="input-line"><span class="input-prefix">></span>CONFIRMED: ${state.inputBuffer}</div>`;
+                state.inputBuffer = '';
+                document.getElementById('current-input').textContent = '';
+                updateStatus('READY');
+            } else {
+                log('WARN', 'Input rejected by user. Clearing buffer.');
+                state.inputBuffer = '';
+                document.getElementById('current-input').textContent = '';
+                updateStatus('RETRY');
+            }
+            
+            confirmZone.classList.remove('show');
+            state.pendingConfirm = false;
+            focusInput();
+        }
+
+        // 更新状态
+        function updateStatus(text) {
+            document.getElementById('status-text').textContent = text;
+        }
+
+        // 聚焦输入
+        function focusInput() {
+            document.getElementById('hidden-input').focus();
+        }
+
+        // 键盘事件处理
+        document.addEventListener('keydown', (e) => {
+            if (!state.booted || state.pendingConfirm) return;
+            
+            e.preventDefault();
+            
+            const key = e.key;
+            const code = e.code;
+            const which = e.which;
+            const keyCode = e.keyCode;
+            
+            // 更新统计
+            state.keyCount++;
+            document.getElementById('key-count').textContent = state.keyCount;
+            
+            // 更新显示
+            updateKeyDisplay(key, code, which, keyCode);
+            
+            // 处理特殊键
+            if (key === 'Enter') {
+                if (state.inputBuffer.length > 0) {
+                    state.pendingConfirm = true;
+                    state.lastKey = code;
+                    document.getElementById('confirm-value').textContent = state.inputBuffer;
+                    document.getElementById('confirm-code').textContent = `${code} (which: ${which})`;
+                    document.getElementById('confirm-zone').classList.add('show');
+                    log('INPUT', `Buffer full. Awaiting confirmation for: "${state.inputBuffer}"`);
+                    updateStatus('CONFIRM?');
+                }
+                return;
+            }
+            
+            if (key === 'Backspace') {
+                state.inputBuffer = state.inputBuffer.slice(0, -1);
+                document.getElementById('current-input').textContent = state.inputBuffer;
+                log('INPUT', `Backspace pressed. Buffer: "${state.inputBuffer}"`);
+                return;
+            }
+            
+            if (key === 'Escape') {
+                state.inputBuffer = '';
+                document.getElementById('current-input').textContent = '';
+                log('SYSTEM', 'Buffer cleared by ESC');
+                return;
+            }
+            
+            // 添加字符到缓冲区
+            if (key.length === 1) {
+                state.inputBuffer += key;
+                document.getElementById('current-input').textContent = state.inputBuffer;
+                log('INPUT', `Key pressed: "${key}" | Code: ${code} | Which: ${which}`);
+                updateStatus('TYPING');
+            } else {
+                log('INPUT', `Special key: ${key} | Code: ${code} | Which: ${which}`);
+            }
+        });
+
+        // 触摸/点击事件
+        document.addEventListener('click', (e) => {
+            if (!state.booted) return;
+            if (e.target.tagName === 'BUTTON') return;
+            focusInput();
+        });
+
+        document.addEventListener('touchstart', (e) => {
+            if (!state.booted) return;
+            focusInput();
+        });
+
+        // 防止页面滚动
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // 输入框事件（备用）
+        const hiddenInput = document.getElementById('hidden-input');
+        hiddenInput.addEventListener('input', (e) => {
+            if (!state.booted || state.pendingConfirm) {
+                e.target.value = '';
+                return;
+            }
+            
+            const value = e.target.value;
+            if (value.length > state.inputBuffer.length) {
+                const newChar = value.slice(-1);
+                state.inputBuffer += newChar;
+                document.getElementById('current-input').textContent = state.inputBuffer;
+                log('INPUT', `Input detected: "${newChar}"`);
+                updateStatus('TYPING');
+            }
+            e.target.value = '';
+        });
+
+        // 启动
+        window.addEventListener('load', () => {
+            setTimeout(bootSequence, 500);
+        });
+
+        // 防止失去焦点
+        setInterval(() => {
+            if (state.booted && !state.pendingConfirm && document.activeElement !== hiddenInput) {
+                focusInput();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
